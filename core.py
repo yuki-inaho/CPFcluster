@@ -6,6 +6,7 @@ import faiss
 import utils
 import gc
 import itertools
+from enum import Enum
 from plotting import plot_clusters_tsne, plot_clusters_pca, plot_clusters_umap
 import warnings
 
@@ -14,7 +15,25 @@ warnings.filterwarnings("ignore", message="invalid value encountered in scalar d
 from sklearn.metrics import calinski_harabasz_score
 
 
-def build_CCgraph(X, min_samples, cutoff, n_jobs, distance_metric="euclidean"):
+class OutlierMethod(Enum):
+    """Outlier detection method for CPF clustering.
+
+    COMPONENT_SIZE: Original implementation - marks components with size <= cutoff as outliers.
+    EDGE_COUNT: Paper-aligned - marks points with edge count (degree) <= cutoff as outliers.
+    """
+
+    COMPONENT_SIZE = "component_size"  # Original: outlier if component size <= cutoff
+    EDGE_COUNT = "edge_count"  # Paper: outlier if point's edge count <= cutoff
+
+
+def build_CCgraph(
+    X,
+    min_samples,
+    cutoff,
+    n_jobs,
+    distance_metric="euclidean",
+    outlier_method=OutlierMethod.EDGE_COUNT,
+):
     """
     Constructs a connected component graph (CCgraph) for input data using k-nearest neighbors.
     Identifies connected components and removes outliers based on a specified cutoff.
@@ -22,9 +41,14 @@ def build_CCgraph(X, min_samples, cutoff, n_jobs, distance_metric="euclidean"):
     Parameters:
         X (np.ndarray): Input data of shape (n_samples, n_features).
         min_samples (int): Minimum number of neighbors to consider for connectivity.
-        cutoff (int): Threshold for filtering out small connected components as outliers.
+        cutoff (int): Threshold for filtering out outliers.
+            - If outlier_method=COMPONENT_SIZE: components with size <= cutoff are outliers.
+            - If outlier_method=EDGE_COUNT: points with edge count <= cutoff are outliers.
         n_jobs (int): Number of parallel jobs for computation.
         distance_metric (str): Metric to use for distance computation.
+        outlier_method (OutlierMethod): Method for outlier detection.
+            - COMPONENT_SIZE (default): Original implementation, marks small components.
+            - EDGE_COUNT: Paper-aligned, marks points with few edges.
 
     Returns:
         components (np.ndarray): Array indicating the component each sample belongs to.
@@ -69,11 +93,17 @@ def build_CCgraph(X, min_samples, cutoff, n_jobs, distance_metric="euclidean"):
     _, components = scipy.sparse.csgraph.connected_components(
         CCmat, directed=False, return_labels=True
     )
-    comp_labs, comp_count = np.unique(components, return_counts=True)
 
-    # Mark outlier components (those smaller than cutoff)
-    outlier_components = comp_labs[comp_count <= cutoff]
-    nanidx = np.isin(components, outlier_components)
+    # Determine outliers based on the selected method
+    if outlier_method == OutlierMethod.EDGE_COUNT:
+        # Paper-aligned: mark points with edge count (degree) <= cutoff as outliers
+        degrees = np.array(CCmat.getnnz(axis=1)).flatten()
+        nanidx = degrees <= cutoff
+    else:
+        # Original: mark components with size <= cutoff as outliers
+        comp_labs, comp_count = np.unique(components, return_counts=True)
+        outlier_components = comp_labs[comp_count <= cutoff]
+        nanidx = np.isin(components, outlier_components)
 
     # Use `np.nan` to indicate outliers instead of `-1`
     components = components.astype(np.float32)
@@ -345,6 +375,7 @@ class CPFcluster:
         merge=False,
         merge_threshold=None,
         density_ratio_threshold=None,
+        outlier_method=OutlierMethod.EDGE_COUNT,
         plot_umap=False,
         plot_pca=False,
         plot_tsne=False,
@@ -361,6 +392,7 @@ class CPFcluster:
         self.density_ratio_threshold = (
             density_ratio_threshold if density_ratio_threshold is not None else [0.1]
         )
+        self.outlier_method = outlier_method
         self.plot_umap = plot_umap
         self.plot_pca = plot_pca
         self.plot_tsne = plot_tsne
@@ -391,7 +423,12 @@ class CPFcluster:
         for k in k_values:
             # Build the k-neighborhood graph
             components, CCmat, knn_radius = build_CCgraph(
-                X, k, self.cutoff, self.n_jobs, self.distance_metric
+                X,
+                k,
+                self.cutoff,
+                self.n_jobs,
+                self.distance_metric,
+                self.outlier_method,
             )
             self.CCmat = CCmat
             # Compute best distance and big brother for the current k

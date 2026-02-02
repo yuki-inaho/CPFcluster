@@ -1,3 +1,3 @@
 import os
 
-from .core import CPFcluster
+from .core import CPFcluster, OutlierMethod

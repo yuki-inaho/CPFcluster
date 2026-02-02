@@ -6,7 +6,7 @@ import os
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import adjusted_rand_score
-from core import CPFcluster
+from core import CPFcluster, OutlierMethod
 
 
 def generate_data(n_per_cluster=100, random_state=42):
@@ -40,14 +40,41 @@ def main():
     )
     parser.add_argument("--n-points", type=int, default=100, help="Points per cluster")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument(
+        "--outlier-method",
+        type=str,
+        choices=["component_size", "edge_count"],
+        default="edge_count",
+        help="Outlier detection method: 'edge_count' (paper-aligned, default) or 'component_size' (original)",
+    )
+    parser.add_argument(
+        "--cutoff",
+        type=int,
+        default=1,
+        help="Cutoff threshold for outlier detection",
+    )
     args = parser.parse_args()
+
+    # Map string to enum
+    outlier_method = (
+        OutlierMethod.EDGE_COUNT
+        if args.outlier_method == "edge_count"
+        else OutlierMethod.COMPONENT_SIZE
+    )
 
     # Generate data
     X, y_true = generate_data(n_per_cluster=args.n_points, random_state=args.seed)
     X = StandardScaler().fit_transform(X)
 
     # Run CPFcluster
-    cpf = CPFcluster(min_samples=10, rho=[0.4], alpha=[1.0], n_jobs=1)
+    cpf = CPFcluster(
+        min_samples=10,
+        rho=[0.4],
+        alpha=[1.0],
+        n_jobs=1,
+        cutoff=args.cutoff,
+        outlier_method=outlier_method,
+    )
     cpf.fit(X)
 
     # Get labels
@@ -55,6 +82,7 @@ def main():
 
     # CLI output
     print(f"Data: {len(X)} points, 2 dimensions")
+    print(f"Outlier method: {args.outlier_method} (cutoff={args.cutoff})")
     print(f"True clusters: 3")
     print(f"Predicted clusters: {len(set(labels) - {-1})}")
     print(f"Outliers: {sum(labels == -1)}")
@@ -73,7 +101,7 @@ def main():
         axes[0].set_title("True Labels")
 
         axes[1].scatter(X[:, 0], X[:, 1], c=labels, cmap="viridis", s=20)
-        axes[1].set_title("CPFcluster Predictions")
+        axes[1].set_title(f"CPFcluster ({args.outlier_method}, cutoff={args.cutoff})")
 
         plt.tight_layout()
 
