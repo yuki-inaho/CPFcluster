@@ -4,11 +4,12 @@ use crate::core::{assign_labels_for_component, compute_big_brother, compute_peak
 use crate::core::select_centers_for_component;
 use crate::data::Dataset;
 use crate::graph::{
-    apply_outlier_filter, build_mutual_knn_graph, extract_components, knn_search_bruteforce,
+    apply_outlier_filter, build_mutual_knn_graph, extract_components, knn_search, KnnBackend,
     OutlierFilter, WeightedGraph,
 };
 use crate::types::OUTLIER;
 
+/// Outlier detection strategy (paper vs. original implementation).
 #[derive(Debug, Clone, Copy)]
 pub enum OutlierMethod {
     EdgeCount,
@@ -24,6 +25,7 @@ impl From<OutlierMethod> for OutlierFilter {
     }
 }
 
+/// High-level configuration for CPF.
 #[derive(Debug, Clone)]
 pub struct CpfConfig {
     pub min_samples: usize,
@@ -31,6 +33,7 @@ pub struct CpfConfig {
     pub alpha: Vec<f32>,
     pub cutoff: usize,
     pub outlier_method: OutlierMethod,
+    pub knn_backend: KnnBackend,
     pub merge: bool,
     pub merge_threshold: Vec<f32>,
     pub density_ratio_threshold: Vec<f32>,
@@ -44,6 +47,7 @@ impl Default for CpfConfig {
             alpha: vec![1.0],
             cutoff: 1,
             outlier_method: OutlierMethod::EdgeCount,
+            knn_backend: KnnBackend::KdTree,
             merge: false,
             merge_threshold: vec![0.5],
             density_ratio_threshold: vec![0.1],
@@ -51,6 +55,7 @@ impl Default for CpfConfig {
     }
 }
 
+/// Mutual kNN graph + components + r_k(x).
 #[derive(Debug, Clone)]
 pub struct CcGraph {
     pub graph: WeightedGraph,
@@ -58,6 +63,7 @@ pub struct CcGraph {
     pub radius: Vec<f32>,
 }
 
+/// Parameter set used for grid search outputs.
 #[derive(Debug, Clone, Copy)]
 pub struct Params {
     pub k: usize,
@@ -67,12 +73,14 @@ pub struct Params {
     pub density_ratio_threshold: f32,
 }
 
+/// One clustering result for a parameter combination.
 #[derive(Debug, Clone)]
 pub struct FitResult {
     pub params: Params,
     pub labels: Vec<i32>,
 }
 
+/// High-level CPF clusterer (mirrors Python CPFcluster).
 #[derive(Debug, Clone)]
 pub struct CpfCluster {
     cfg: CpfConfig,
@@ -83,8 +91,9 @@ impl CpfCluster {
         Self { cfg }
     }
 
+    /// Build mutual kNN graph, components, and kNN radius (Algorithm 2, Steps 1-2).
     pub fn build_cc_graph(&self, dataset: &Dataset, k: usize) -> CcGraph {
-        let knn = knn_search_bruteforce(dataset, k);
+        let knn = knn_search(dataset, k, self.cfg.knn_backend);
         let graph = build_mutual_knn_graph(&knn);
         let comps = extract_components(&graph);
         let comps = apply_outlier_filter(&graph, &comps, self.cfg.outlier_method.into(), self.cfg.cutoff);
@@ -95,6 +104,7 @@ impl CpfCluster {
         }
     }
 
+    /// Fit the model for all parameter combinations (grid search).
     pub fn fit(&self, dataset: &Dataset, k_values: Option<&[usize]>) -> Vec<FitResult> {
         let ks: Vec<usize> = k_values.map(|v| v.to_vec()).unwrap_or_else(|| vec![self.cfg.min_samples]);
         let mut out = Vec::new();
@@ -130,6 +140,7 @@ impl CpfCluster {
         out
     }
 
+    /// Cluster assignment for a single (rho, alpha) pair.
     fn get_labels_for_params(
         &self,
         dataset: &Dataset,
