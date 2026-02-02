@@ -12,6 +12,7 @@ pub struct VisualizationData {
     pub big_brother: Vec<i32>,
 }
 
+/// Reproduce the visualization data from demo_cpf_visualize.py (adj/rho/delta/big_brother).
 pub fn compute_visualization_data(dataset: &Dataset, k: usize) -> VisualizationData {
     let n = dataset.n();
 
@@ -104,6 +105,7 @@ pub fn compute_visualization_data(dataset: &Dataset, k: usize) -> VisualizationD
     }
 }
 
+/// Render the 4-panel CPF visualization (approximate match to Python demo).
 pub fn plot_four_panels(
     dataset: &Dataset,
     labels: &[i32],

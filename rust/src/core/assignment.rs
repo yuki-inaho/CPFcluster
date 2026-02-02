@@ -1,4 +1,5 @@
 //! Assignment step (Algorithm 2, Steps 17-23).
+//! Non-center points follow Big Brother pointers to a center.
 
 use crate::types::NO_PARENT;
 
@@ -16,6 +17,7 @@ pub fn assign_labels_for_component(
         global_to_local[gi] = li as i32;
     }
 
+    // Map global parent indices to local indices.
     let mut parent_local = vec![NO_PARENT; nc];
     for (li, &gi) in cc_idx.iter().enumerate() {
         let p = big_brother[gi];
@@ -30,6 +32,7 @@ pub fn assign_labels_for_component(
         parent_local[c] = c as i32;
     }
 
+    // Build an undirected adjacency from parent links to get components.
     let mut adj: Vec<Vec<usize>> = vec![Vec::new(); nc];
     for i in 0..nc {
         let p = parent_local[i];
@@ -63,6 +66,7 @@ pub fn assign_labels_for_component(
         comp_id += 1;
     }
 
+    // Offset labels so clusters across components are unique.
     for v in labels.iter_mut() {
         *v += label_offset;
     }

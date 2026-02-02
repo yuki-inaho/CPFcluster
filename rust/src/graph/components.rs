@@ -3,6 +3,7 @@
 use crate::graph::adjacency::WeightedGraph;
 use crate::types::OUTLIER;
 
+/// Outlier filtering strategies (paper vs. original implementation).
 #[derive(Debug, Clone, Copy)]
 pub enum OutlierFilter {
     None,
@@ -10,6 +11,7 @@ pub enum OutlierFilter {
     ComponentSize,
 }
 
+/// Connected components on the mutual kNN graph (Definition 9).
 pub fn extract_components(graph: &WeightedGraph) -> Vec<i32> {
     let n = graph.n();
     let mut labels = vec![-1i32; n];
@@ -38,6 +40,7 @@ pub fn extract_components(graph: &WeightedGraph) -> Vec<i32> {
     labels
 }
 
+/// Paper-aligned: mark nodes with degree <= min_edges as outliers.
 pub fn filter_by_edge_count(
     graph: &WeightedGraph,
     components: &[i32],
@@ -53,6 +56,7 @@ pub fn filter_by_edge_count(
     out
 }
 
+/// Original implementation: mark small components as outliers.
 pub fn filter_by_component_size(components: &[i32], min_size: usize) -> Vec<i32> {
     let mut counts: std::collections::HashMap<i32, usize> = std::collections::HashMap::new();
     for &c in components {
@@ -71,6 +75,7 @@ pub fn filter_by_component_size(components: &[i32], min_size: usize) -> Vec<i32>
     out
 }
 
+/// Apply the selected outlier policy and return updated labels.
 pub fn apply_outlier_filter(
     graph: &WeightedGraph,
     components: &[i32],

@@ -1,4 +1,5 @@
 //! Center selection (Algorithm 2, Steps 3-16).
+//! Definition 10: modal-set selection using V_{x*} level sets.
 
 use crate::graph::WeightedGraph;
 
@@ -16,6 +17,7 @@ pub fn select_centers_for_component(
         return Vec::new();
     }
 
+    // Start from the global peak within the component.
     let mut centers = vec![argmax(peaked, None).unwrap_or(0)];
     let mut not_tested = vec![true; nc];
     not_tested[centers[0]] = false;
@@ -26,6 +28,8 @@ pub fn select_centers_for_component(
     while not_tested.iter().any(|&v| v) {
         let prop_cent = argmax(peaked, Some(&not_tested)).unwrap();
 
+        // Early stop: if the current radius is largest among tested and its
+        // level set is connected, we can stop (mirrors Python logic).
         if should_stop_by_radius(
             graph,
             cc_idx,
@@ -38,6 +42,7 @@ pub fn select_centers_for_component(
             break;
         }
 
+        // Definition 10: V_{x*} using rho and dimension.
         let v_cutoff = cc_knn_radius[prop_cent] / rho.powf(1.0 / dim as f32);
         let e_cutoff = cc_knn_radius[prop_cent] / alpha;
         edge_threshold = edge_threshold.min(e_cutoff);

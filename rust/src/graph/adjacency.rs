@@ -23,6 +23,8 @@ impl WeightedGraph {
     }
 }
 
+/// Build the mutual kNN graph (Definition 7).
+/// An undirected edge (i,j) exists iff i and j are in each other's kNN lists.
 pub fn build_mutual_knn_graph(knn: &KnnResult) -> WeightedGraph {
     let n = knn.indices.len();
     let k = knn.k;
