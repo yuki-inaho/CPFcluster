@@ -26,6 +26,10 @@ default: build
 build:
     cargo build
 
+# Build Rust crate (release profile). Use for performance checks.
+release:
+    cargo build --release
+
 # Run all Rust tests (unit + integration).
 test:
     cargo test
