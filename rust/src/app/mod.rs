@@ -34,6 +34,9 @@ pub struct CpfConfig {
     pub cutoff: usize,
     pub outlier_method: OutlierMethod,
     pub knn_backend: KnnBackend,
+    // TODO: merge functionality is not implemented in Rust (Python-only extension).
+    // See Python's CPFcluster.merge_clusters() for reference implementation.
+    // When implementing, these fields will be used for parameter grid search.
     pub merge: bool,
     pub merge_threshold: Vec<f32>,
     pub density_ratio_threshold: Vec<f32>,
@@ -115,24 +118,25 @@ impl CpfCluster {
             let best_distance = bb.parent_dist;
             let big_brother = bb.parent;
 
+            // NOTE: merge functionality is not implemented in Rust.
+            // Use first values from merge_threshold and density_ratio_threshold for Params.
+            let mt = self.cfg.merge_threshold.first().copied().unwrap_or(0.5);
+            let drt = self.cfg.density_ratio_threshold.first().copied().unwrap_or(0.1);
+
             for &rho in &self.cfg.rho {
                 for &alpha in &self.cfg.alpha {
-                    for &mt in &self.cfg.merge_threshold {
-                        for &drt in &self.cfg.density_ratio_threshold {
-                            let labels = self.get_labels_for_params(
-                                dataset,
-                                &cc,
-                                &best_distance,
-                                &big_brother,
-                                rho,
-                                alpha,
-                            );
-                            out.push(FitResult {
-                                params: Params { k, rho, alpha, merge_threshold: mt, density_ratio_threshold: drt },
-                                labels,
-                            });
-                        }
-                    }
+                    let labels = self.get_labels_for_params(
+                        dataset,
+                        &cc,
+                        &best_distance,
+                        &big_brother,
+                        rho,
+                        alpha,
+                    );
+                    out.push(FitResult {
+                        params: Params { k, rho, alpha, merge_threshold: mt, density_ratio_threshold: drt },
+                        labels,
+                    });
                 }
             }
         }
