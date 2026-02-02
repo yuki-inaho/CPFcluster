@@ -4,15 +4,14 @@ version = "0.1.0"
 description = "Component-wise Peak-Finding clustering algorithm"
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    "numpy",
-    "scipy",
-    "scikit-learn",
-    "matplotlib",
+    "numpy>=2.0.0",
+    "scipy>=1.14.0",
+    "scikit-learn>=1.5.0",
+    "matplotlib>=3.9.0",
     "umap-learn>=0.5.5",
-    "faiss-cpu",
-    "numba>=0.58",
-    "llvmlite>=0.41",
-    "radon>=6.0.1",
+    "faiss-cpu>=1.9.0",
+    "numba>=0.60.0",
+    "llvmlite>=0.43.0",
 ]
 
 [build-system]
@@ -27,6 +26,7 @@ dev = [
     "pytest>=9.0.2",
     "ruff>=0.14.14",
     "ty>=0.0.14",
+    "radon>=6.0.1",
 ]
 
 [tool.pytest.ini_options]
