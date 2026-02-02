@@ -80,7 +80,7 @@ pub fn knn_search_kdtree(dataset: &Dataset, k: usize) -> KnnResult {
     // Parallelize queries; KD-tree is read-only after build.
     let results: Vec<(Vec<usize>, Vec<f32>, f32)> = (0..n)
         .into_par_iter()
-        .map(|i| compute_knn_for_point_kdtree(dataset, &tree, k, k_query, i))
+        .map(|i| compute_knn_for_point_kdtree(&tree, k, k_query, i, dataset.row(i)))
         .collect();
 
     let mut indices = Vec::with_capacity(n);
@@ -100,6 +100,44 @@ pub fn knn_search_kdtree(dataset: &Dataset, k: usize) -> KnnResult {
     }
 }
 
+/// Sort distance pairs, extract top-k, ensure self at index 0, and compute radius.
+/// Common post-processing for both brute-force and KD-tree backends.
+#[inline]
+fn sort_and_extract_knn(
+    mut dist_pairs: Vec<(f32, usize)>,
+    query_idx: usize,
+    k: usize,
+) -> (Vec<usize>, Vec<f32>, f32) {
+    // 1. Sort by distance (tie-break by index for determinism).
+    dist_pairs.sort_by(|a, b| {
+        a.0.partial_cmp(&b.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.1.cmp(&b.1))
+    });
+
+    // 2. Extract top-k.
+    let take = k.min(dist_pairs.len());
+    let mut neigh = Vec::with_capacity(take);
+    let mut dist = Vec::with_capacity(take);
+    for t in 0..take {
+        dist.push(dist_pairs[t].0);
+        neigh.push(dist_pairs[t].1);
+    }
+
+    // 3. Ensure query point is at index 0.
+    if take > 0 && neigh[0] != query_idx {
+        if let Some(pos) = neigh.iter().position(|&x| x == query_idx) {
+            neigh.swap(0, pos);
+            dist.swap(0, pos);
+            dist[0] = 0.0;
+        }
+    }
+
+    // 4. r_k(x): distance to the k-th neighbor (including self at index 0).
+    let rad = if take == 0 { 0.0 } else { dist[take - 1] };
+    (neigh, dist, rad)
+}
+
 /// Brute-force kNN for a single query point.
 fn compute_knn_for_point_bruteforce(
     dataset: &Dataset,
@@ -108,76 +146,25 @@ fn compute_knn_for_point_bruteforce(
 ) -> (Vec<usize>, Vec<f32>, f32) {
     let n = dataset.n();
     let xi = dataset.row(i);
-    let mut dv: Vec<(f32, usize)> = Vec::with_capacity(n);
-    for j in 0..n {
-        let d = euclidean(xi, dataset.row(j));
-        dv.push((d, j));
-    }
-    dv.sort_by(|a, b| {
-        a.0.partial_cmp(&b.0)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.1.cmp(&b.1))
-    });
-
-    let take = k.min(dv.len());
-    let mut neigh = Vec::with_capacity(take);
-    let mut dist = Vec::with_capacity(take);
-    for t in 0..take {
-        dist.push(dv[t].0);
-        neigh.push(dv[t].1);
-    }
-
-    if take > 0 && neigh[0] != i {
-        if let Some(pos) = neigh.iter().position(|&x| x == i) {
-            neigh.swap(0, pos);
-            dist.swap(0, pos);
-            dist[0] = 0.0;
-        }
-    }
-
-    // r_k(x): distance to the k-th neighbor (including self at index 0).
-    let rad = if take == 0 { 0.0 } else { dist[take - 1] };
-    (neigh, dist, rad)
+    let dv: Vec<(f32, usize)> = (0..n)
+        .map(|j| (euclidean(xi, dataset.row(j)), j))
+        .collect();
+    sort_and_extract_knn(dv, i, k)
 }
 
 /// KD-tree kNN for a single query point.
 fn compute_knn_for_point_kdtree(
-    dataset: &Dataset,
     tree: &Arc<KdTree<f32, usize, Vec<f32>>>,
     k: usize,
     k_query: usize,
     i: usize,
+    point: &[f32],
 ) -> (Vec<usize>, Vec<f32>, f32) {
-    let point = dataset.row(i);
-    let mut result = tree
+    let result: Vec<(f32, usize)> = tree
         .nearest(point, k_query, &euclidean)
         .unwrap_or_default()
         .into_iter()
         .map(|(d, &idx)| (d, idx))
-        .collect::<Vec<(f32, usize)>>();
-
-    result.sort_by(|a, b| {
-        a.0.partial_cmp(&b.0)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.1.cmp(&b.1))
-    });
-
-    let take = k.min(result.len());
-    let mut neigh = Vec::with_capacity(take);
-    let mut dist = Vec::with_capacity(take);
-    for t in 0..take {
-        dist.push(result[t].0);
-        neigh.push(result[t].1);
-    }
-
-    if take > 0 && neigh[0] != i {
-        if let Some(pos) = neigh.iter().position(|&x| x == i) {
-            neigh.swap(0, pos);
-            dist.swap(0, pos);
-            dist[0] = 0.0;
-        }
-    }
-
-    let rad = if take == 0 { 0.0 } else { dist[take - 1] };
-    (neigh, dist, rad)
+        .collect();
+    sort_and_extract_knn(result, i, k)
 }
