@@ -40,3 +40,4 @@ outputs/
 # Rust
 rust/target/
 rust/outputs/
+rust-pyo3/target/
