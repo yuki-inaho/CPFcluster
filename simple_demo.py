@@ -31,7 +31,13 @@ def generate_data(n_per_cluster=100, random_state=42):
 def main():
     parser = argparse.ArgumentParser(description="CPFcluster simple demo")
     parser.add_argument("--plot", action="store_true", help="Show scatter plot")
-    parser.add_argument("--output", "-o", type=str, default="simple_demo_result.png", help="Output filename for plot (saved in outputs/)")
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default="simple_demo_result.png",
+        help="Output filename for plot (saved in outputs/)",
+    )
     parser.add_argument("--n-points", type=int, default=100, help="Points per cluster")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     args = parser.parse_args()

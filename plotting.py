@@ -1,7 +1,9 @@
-def plot_clusters_umap(X, labels, sample_size=30000, n_neighbors=15, min_dist=0.3, random_state=42):
+def plot_clusters_umap(
+    X, labels, sample_size=30000, n_neighbors=15, min_dist=0.3, random_state=42
+):
     """
     Visualizes clusters using UMAP for dimensionality reduction on provided data X with labels.
-    
+
     Parameters:
         X (np.ndarray): Input data of shape (n_samples, n_features).
         labels (np.ndarray): Cluster labels of shape (n_samples,).
@@ -46,7 +48,9 @@ def plot_clusters_umap(X, labels, sample_size=30000, n_neighbors=15, min_dist=0.
     # Plot outliers separately
     if -1 in cluster_points:
         outliers = cluster_points[-1]
-        plt.scatter(outliers[:, 0], outliers[:, 1], c="gray", label="Outliers", alpha=0.5, s=10)
+        plt.scatter(
+            outliers[:, 0], outliers[:, 1], c="gray", label="Outliers", alpha=0.5, s=10
+        )
 
     # Finalize plot
     plt.title("Clusters and Outliers (UMAP)")
@@ -60,6 +64,7 @@ def plot_clusters_umap(X, labels, sample_size=30000, n_neighbors=15, min_dist=0.
         plt.legend(outlier_handles, ["Outliers"], loc="lower left", fontsize="small")
 
     plt.show()
+
 
 def plot_clusters_pca(X, labels):
     """
@@ -82,9 +87,18 @@ def plot_clusters_pca(X, labels):
         cluster_points = X_reduced[labels == label]
         if label == -1:
             # Plot outliers separately
-            plt.scatter(cluster_points[:, 0], cluster_points[:, 1], c="gray", label="Outliers", alpha=0.5, s=10)
+            plt.scatter(
+                cluster_points[:, 0],
+                cluster_points[:, 1],
+                c="gray",
+                label="Outliers",
+                alpha=0.5,
+                s=10,
+            )
         else:
-            plt.scatter(cluster_points[:, 0], cluster_points[:, 1], s=10)  # No label for clusters
+            plt.scatter(
+                cluster_points[:, 0], cluster_points[:, 1], s=10
+            )  # No label for clusters
 
     # Add title and axis labels
     plt.title("Clusters and Outliers (PCA)")
@@ -98,6 +112,7 @@ def plot_clusters_pca(X, labels):
         plt.legend(outlier_handles, ["Outliers"], loc="lower left", fontsize="small")
 
     plt.show()
+
 
 def plot_clusters_tsne(X, labels, sample_size=30000, perplexity=30, random_state=42):
     """
@@ -121,7 +136,9 @@ def plot_clusters_tsne(X, labels, sample_size=30000, perplexity=30, random_state
         labels = labels[subset_indices]
 
     # Perform t-SNE
-    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=random_state, n_jobs=4)
+    tsne = TSNE(
+        n_components=2, perplexity=perplexity, random_state=random_state, n_jobs=4
+    )
     X_reduced = tsne.fit_transform(X)
 
     # Group cluster points efficiently
@@ -139,7 +156,9 @@ def plot_clusters_tsne(X, labels, sample_size=30000, perplexity=30, random_state
     # Plot outliers separately
     if -1 in cluster_points:
         outliers = cluster_points[-1]
-        plt.scatter(outliers[:, 0], outliers[:, 1], c="gray", label="Outliers", alpha=0.5, s=10)
+        plt.scatter(
+            outliers[:, 0], outliers[:, 1], c="gray", label="Outliers", alpha=0.5, s=10
+        )
 
     # Add title and axis labels
     plt.title("Clusters and Outliers (t-SNE)")

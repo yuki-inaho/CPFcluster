@@ -109,10 +109,14 @@ def plot_four_panels(X, labels, adj, rho, delta, big_brother, output_file):
 
     # --- Panel 2: Compute Peak-Finding Criterion ---
     ax = axes[0, 1]
-    ax.set_title("2. Compute the Peak-Finding Criterion.", fontweight="bold", loc="left")
+    ax.set_title(
+        "2. Compute the Peak-Finding Criterion.", fontweight="bold", loc="left"
+    )
 
     # Background edges
-    ax.add_collection(LineCollection(lines, colors=edge_color, linewidths=0.3, alpha=0.3))
+    ax.add_collection(
+        LineCollection(lines, colors=edge_color, linewidths=0.3, alpha=0.3)
+    )
 
     # Nodes: Size = Delta, Color = Density
     s_norm = (delta / delta.max()) * 200 + 10
@@ -225,9 +229,7 @@ def main():
         default="cpf_process_viz.png",
         help="Output filename (saved in outputs/)",
     )
-    parser.add_argument(
-        "--n-points", type=int, default=150, help="Points per cluster"
-    )
+    parser.add_argument("--n-points", type=int, default=150, help="Points per cluster")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument(
         "--k", type=int, default=10, help="Number of neighbors for k-NN graph"

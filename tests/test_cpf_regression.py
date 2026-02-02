@@ -14,6 +14,7 @@ from sklearn.metrics import adjusted_rand_score
 
 # Import from project root
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import CPFcluster, build_CCgraph, get_density_dists_bb, get_y
@@ -101,8 +102,9 @@ class TestVisualizationData:
         """Test that point with highest density has no big brother."""
         adj, rho, delta, big_brother = compute_visualization_data(sample_data, k=5)
         highest_density_idx = np.argmax(rho)
-        assert big_brother[highest_density_idx] == -1, \
+        assert big_brother[highest_density_idx] == -1, (
             "Highest density point should have no big brother"
+        )
 
 
 class TestCPFcluster:
@@ -121,7 +123,7 @@ class TestCPFcluster:
         cpf = CPFcluster(min_samples=10, rho=[0.4], alpha=[1.0], n_jobs=1)
         result = cpf.fit(X)
 
-        assert hasattr(cpf, 'clusterings')
+        assert hasattr(cpf, "clusterings")
         assert len(cpf.clusterings) > 0
 
     def test_cpf_labels_shape(self, sample_data):
@@ -183,19 +185,25 @@ class TestBuildCCGraph:
     def test_components_shape(self, sample_data):
         """Test that components array has correct shape."""
         X = sample_data
-        components, CCmat, knn_radius = build_CCgraph(X, min_samples=5, cutoff=1, n_jobs=1)
+        components, CCmat, knn_radius = build_CCgraph(
+            X, min_samples=5, cutoff=1, n_jobs=1
+        )
         assert components.shape == (len(X),)
 
     def test_ccmat_shape(self, sample_data):
         """Test that CCmat has correct shape."""
         X = sample_data
-        components, CCmat, knn_radius = build_CCgraph(X, min_samples=5, cutoff=1, n_jobs=1)
+        components, CCmat, knn_radius = build_CCgraph(
+            X, min_samples=5, cutoff=1, n_jobs=1
+        )
         assert CCmat.shape == (len(X), len(X))
 
     def test_knn_radius_positive(self, sample_data):
         """Test that knn_radius values are positive for non-outliers."""
         X = sample_data
-        components, CCmat, knn_radius = build_CCgraph(X, min_samples=5, cutoff=1, n_jobs=1)
+        components, CCmat, knn_radius = build_CCgraph(
+            X, min_samples=5, cutoff=1, n_jobs=1
+        )
 
         # Non-NaN values should be positive
         valid_radii = knn_radius[~np.isnan(knn_radius)]
@@ -215,7 +223,8 @@ class TestPlotGeneration:
     def test_plot_file_created(self, sample_data):
         """Test that plot file is created."""
         import matplotlib
-        matplotlib.use('Agg')  # Non-interactive backend for testing
+
+        matplotlib.use("Agg")  # Non-interactive backend for testing
         import matplotlib.pyplot as plt
 
         from demo_cpf_visualize import plot_four_panels
@@ -231,7 +240,7 @@ class TestPlotGeneration:
         adj, rho, delta, big_brother = compute_visualization_data(X, k=5)
 
         # Create temp file
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             output_path = f.name
 
         try:
