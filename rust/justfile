@@ -1,0 +1,14 @@
+set shell := ["bash", "-uc"]
+
+default: build
+
+build:
+    cargo build
+
+test:
+    cargo test
+
+viz:
+    cargo run --bin cpf_viz
+
+all: build test viz
