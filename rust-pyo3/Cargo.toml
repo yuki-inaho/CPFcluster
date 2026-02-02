@@ -1,0 +1,18 @@
+[package]
+name = "cpfcluster-pyo3"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "PyO3 wrapper for CPFcluster Rust core."
+
+[lib]
+name = "cpfcluster_pyo3"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.21", features = ["extension-module"] }
+numpy = "0.21"
+
+[dependencies.cpfcluster-rs]
+path = "../rust"
+package = "cpfcluster-rs"

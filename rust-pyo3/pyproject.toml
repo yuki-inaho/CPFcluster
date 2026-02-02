@@ -1,0 +1,9 @@
+[build-system]
+requires = ["maturin>=1.5"]
+build-backend = "maturin"
+
+[project]
+name = "cpfcluster-pyo3"
+version = "0.1.0"
+description = "PyO3 wrapper for CPFcluster Rust core."
+requires-python = ">=3.10"
