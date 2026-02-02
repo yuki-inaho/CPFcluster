@@ -1,3 +1,3 @@
-import os
+from .core_Geo import CPFcluster as CPFcluster
 
-from .core import CPFcluster
+__all__ = ["CPFcluster"]
