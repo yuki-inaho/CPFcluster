@@ -12,12 +12,7 @@ import pytest
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import adjusted_rand_score
 
-# Import from project root
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from core import CPFcluster, build_CCgraph, get_density_dists_bb, get_y
+from src import CPFcluster, build_CCgraph
 from demo_cpf_visualize import generate_data, compute_visualization_data
 
 
@@ -121,8 +116,7 @@ class TestCPFcluster:
         """Test that fit() returns clusterings dictionary."""
         X, _ = sample_data
         cpf = CPFcluster(min_samples=10, rho=[0.4], alpha=[1.0], n_jobs=1)
-        result = cpf.fit(X)
-
+        cpf.fit(X)
         assert hasattr(cpf, "clusterings")
         assert len(cpf.clusterings) > 0
 
@@ -133,7 +127,7 @@ class TestCPFcluster:
         cpf.fit(X)
 
         labels = list(cpf.clusterings.values())[0]
-        assert labels.shape == (len(X),), f"Labels shape mismatch"
+        assert labels.shape == (len(X),), "Labels shape mismatch"
 
     def test_cpf_finds_clusters(self, sample_data):
         """Test that CPF finds at least 2 clusters."""
