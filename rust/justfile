@@ -1,14 +1,59 @@
 set shell := ["bash", "-uc"]
 
+# ------------------------------------------------------------
+# CPFcluster Rust workspace helper (just)
+#
+# This file is intentionally verbose and self-documenting.
+# Each recipe includes an explanation of when/why to use it.
+#
+# Usage examples:
+#   just                # default: build
+#   just test           # run all Rust tests
+#   just viz            # generate visualization PNG
+#   just all            # build + test + viz
+#   just pyo3-install   # build + install PyO3 wrapper into current venv
+#   just pyo3-test      # run Python regression tests against PyO3
+# ------------------------------------------------------------
+
+# Default recipe: compile Rust crates.
 default: build
 
+# ------------------------------------------------------------
+# Core Rust build/test
+# ------------------------------------------------------------
+
+# Build Rust crate (debug profile). Use this while iterating.
 build:
     cargo build
 
+# Run all Rust tests (unit + integration).
 test:
     cargo test
 
+# Generate the 4-panel CPF visualization.
+# Output: rust/outputs/cpf_process_viz.png
+# NOTE: This is a Rust reimplementation of the Python demo.
 viz:
     cargo run --bin cpf_viz
 
+# Convenience: build + test + viz in one shot.
 all: build test viz
+
+# ------------------------------------------------------------
+# PyO3 wrapper workflow
+# ------------------------------------------------------------
+
+# Build a wheel via maturin (release profile).
+# Output wheel is placed under /tmp by maturin.
+pyo3-build:
+    maturin build --manifest-path ../rust-pyo3/Cargo.toml --release
+
+# Build + install the PyO3 module into the current venv (release profile).
+# Requires that you are using the project venv (uv).
+pyo3-install:
+    maturin develop --manifest-path ../rust-pyo3/Cargo.toml --release
+
+# Run Python regression tests against the installed PyO3 module.
+# This expects `cpfcluster_pyo3` to be importable in the current venv.
+pyo3-test:
+    uv run pytest -v tests/test_pyo3_regression.py
