@@ -1,6 +1,3 @@
-import numpy as np
-import sys
-import os
 from sklearn.metrics.pairwise import euclidean_distances
 
 
