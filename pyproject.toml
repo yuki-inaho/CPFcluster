@@ -12,6 +12,7 @@ dependencies = [
     "faiss-cpu",
     "numba>=0.58",
     "llvmlite>=0.41",
+    "radon>=6.0.1",
 ]
 
 [build-system]
