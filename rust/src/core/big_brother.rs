@@ -3,13 +3,16 @@
 use crate::data::Dataset;
 use crate::math::euclidean;
 use crate::types::{NO_PARENT, OUTLIER};
+use rayon::prelude::*;
 
+/// Big Brother output: parent index and distance to parent (omega).
 #[derive(Debug, Clone)]
 pub struct BigBrotherResult {
     pub parent: Vec<i32>,
     pub parent_dist: Vec<f32>,
 }
 
+/// Compute Big Brother for all components (Definition 2).
 pub fn compute_big_brother(
     dataset: &Dataset,
     knn_radius: &[f32],
@@ -29,12 +32,21 @@ pub fn compute_big_brother(
         }
     }
 
-    for (_cid, cc_idx) in comp_map {
-        let mut radius_cc = Vec::with_capacity(cc_idx.len());
-        for &gi in &cc_idx {
-            radius_cc.push(knn_radius[gi]);
-        }
-        let cc = compute_big_brother_for_component(dataset, &cc_idx, &radius_cc, k);
+    let comp_list: Vec<Vec<usize>> = comp_map.into_values().collect();
+    // Components are independent, so compute in parallel.
+    let results: Vec<(Vec<usize>, BigBrotherResult)> = comp_list
+        .par_iter()
+        .map(|cc_idx| {
+            let mut radius_cc = Vec::with_capacity(cc_idx.len());
+            for &gi in cc_idx {
+                radius_cc.push(knn_radius[gi]);
+            }
+            let bb = compute_big_brother_for_component(dataset, cc_idx, &radius_cc, k);
+            (cc_idx.clone(), bb)
+        })
+        .collect();
+
+    for (cc_idx, cc) in results {
         for (li, &gi) in cc_idx.iter().enumerate() {
             let p_local = cc.parent[li];
             if p_local == NO_PARENT {
@@ -109,6 +121,7 @@ pub fn compute_big_brother_for_component(
         }
     }
 
+    // If multiple maxima exist, pick one as root and attach the rest to it.
     if !maxima.is_empty() {
         let root = maxima[0];
         parent[root] = root as i32;
