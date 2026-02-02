@@ -6,7 +6,7 @@ import os
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import adjusted_rand_score
-from core import CPFcluster, OutlierMethod
+from src import CPFcluster, OutlierMethod
 
 
 def generate_data(n_per_cluster=100, random_state=42):
@@ -83,7 +83,7 @@ def main():
     # CLI output
     print(f"Data: {len(X)} points, 2 dimensions")
     print(f"Outlier method: {args.outlier_method} (cutoff={args.cutoff})")
-    print(f"True clusters: 3")
+    print("True clusters: 3")
     print(f"Predicted clusters: {len(set(labels) - {-1})}")
     print(f"Outliers: {sum(labels == -1)}")
     print(f"ARI: {adjusted_rand_score(y_true, labels):.3f}")

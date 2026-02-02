@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
-from core import CPFcluster
+from src import CPFcluster
 
 
 def generate_data(n_per_cluster=100, random_state=42):
@@ -200,8 +200,6 @@ def plot_four_panels(X, labels, adj, rho, delta, big_brother, output_file):
         ax.plot(path_coords[:, 0], path_coords[:, 1], c="gold", linewidth=3, zorder=20)
         # Add arrow head at the end
         if len(path_coords) > 1:
-            dx = path_coords[-1, 0] - path_coords[-2, 0]
-            dy = path_coords[-1, 1] - path_coords[-2, 1]
             ax.annotate(
                 "",
                 xy=(path_coords[-1, 0], path_coords[-1, 1]),
@@ -265,7 +263,7 @@ def main():
     plot_four_panels(X, labels, adj, rho, delta, big_brother, output_path)
 
     # CLI summary
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Data: {len(X)} points, 2 dimensions")
     print(f"  k (neighbors): {args.k}")
     print(f"  Predicted clusters: {len(set(labels) - {-1})}")
