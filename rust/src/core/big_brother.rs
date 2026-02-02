@@ -78,6 +78,7 @@ pub fn compute_big_brother_for_component(
     let k_local = std::cmp::max(1, std::cmp::min(k, nc - 1));
 
     // First pass: choose nearest higher-density neighbor within local k-NN.
+    // Use partial sort (select_nth_unstable_by) to reduce O(n log n) to O(n + k log k).
     for i in 0..nc {
         let xi = dataset.row(cc_idx[i]);
         let mut dv: Vec<(f32, usize)> = Vec::with_capacity(nc);
@@ -85,9 +86,17 @@ pub fn compute_big_brother_for_component(
             let d = euclidean(xi, dataset.row(cc_idx[j]));
             dv.push((d, j));
         }
-        dv.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         let take = k_local.min(dv.len());
+        if take > 0 && dv.len() > take {
+            // Partial sort: partition so that dv[..take] contains the smallest take elements.
+            dv.select_nth_unstable_by(take - 1, |a, b| {
+                a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+        // Sort only the first `take` elements.
+        dv[..take].sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
         for t in 0..take {
             let j = dv[t].1;
             if radius_cc[i] - radius_cc[j] > 0.0 {
