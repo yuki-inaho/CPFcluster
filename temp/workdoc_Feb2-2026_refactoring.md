@@ -914,15 +914,15 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 - [x] **エラー時対処**: 失敗テストを個別修正
 
 #### 手順 7.8: git commit（fastCPF parity）
-- [ ] **操作**:
+- [x] **操作**:
 ```bash
 git add src/ tests/
 git status
 git commit -m "Add CPFcluster fastCPF-parity API and density methods"
 ```
-- [ ] **確認**: コミット成功
-- [ ] **テスト**: `uv run pytest`で全テストPASS
-- [ ] **エラー時対処**: ステージ漏れがあれば追加
+- [x] **確認**: コミット成功
+- [x] **テスト**: `uv run pytest`で全テストPASS
+- [x] **エラー時対処**: ステージ漏れがあれば追加
 
 ---
 
@@ -986,8 +986,8 @@ uv run python demo_cpf_visualize.py -o outputs/test.png
 - [x] **`src/`ディレクトリ構造が計画通り作成されている** ✓ 完了
 - [x] **後方互換API（`CPFcluster`クラス）が維持されている** ✓ from src import CPFcluster
 - [x] **git commitが完了している** ✓ 6コミット作成
-- [ ] **fastCPF互換APIがPythonで利用可能**（CPFcluster fit_single + 属性）
-- [ ] **fastCPF準拠テストがPASS**（backend/density_method/属性）
+- [x] **fastCPF互換APIがPythonで利用可能**（CPFcluster fit_single + 属性）
+- [x] **fastCPF準拠テストがPASS**（backend/density_method/属性）
 
 ---
 
@@ -1183,6 +1183,9 @@ uv run python demo_cpf_visualize.py -o outputs/test.png
 | 2026-02-05 | 16:07:35 JST+0900 | Codex | 手順7.6エラー対応: SyntaxError修正 | `src/cpf.py`のf-stringエスケープを修正 |
 | 2026-02-05 | 16:08:19 JST+0900 | Codex | 手順7.6確認/テスト完了: parityテスト | `uv run pytest tests/test_cpf_parity.py -v`で14件PASS（警告4件） |
 | 2026-02-05 | 16:08:55 JST+0900 | Codex | 手順7.7テスト完了: 全回帰 | `uv run pytest -v`で45件PASS（警告4件） |
+| 2026-02-05 | 16:10:00 JST+0900 | Codex | 手順7.8操作/確認完了: git commit | commit 46cf056 (fastCPF parity) |
+| 2026-02-05 | 16:10:32 JST+0900 | Codex | 手順7.8テスト完了: pytest | `uv run pytest -v`で45件PASS（警告4件） |
+| 2026-02-05 | 16:10:32 JST+0900 | Codex | 手順7.8エラー時対処完了 | ステージ漏れなし |
 | | | | | |
 
 ---
