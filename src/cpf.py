@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, List, Tuple
+from typing import Iterable, Iterator, List, Tuple, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -9,12 +9,18 @@ import faiss
 import gc
 import itertools
 from enum import Enum
+from dataclasses import dataclass
 import warnings
 
 from .types import OUTLIER, NO_PARENT
 from .core.peak_score import compute_peak_score
+from .core.big_brother import BigBrotherResult, compute_big_brother
+from .core.density import compute_density_radius
 from . import utils
 from .plotting import plot_clusters_tsne, plot_clusters_pca, plot_clusters_umap
+from .graph.knn import knn_search, knn_search_faiss, KnnResult
+from .graph.adjacency import build_knn_adjacency, make_mutual
+from .graph.components import extract_components, filter_by_edge_count
 
 from sklearn.metrics import calinski_harabasz_score
 
@@ -28,6 +34,18 @@ class OutlierMethod(Enum):
 
     COMPONENT_SIZE = "component_size"  # Original: outlier if component size <= cutoff
     EDGE_COUNT = "edge_count"  # Paper: outlier if point's edge count <= cutoff
+
+
+@dataclass(frozen=True)
+class _FastFit:
+    labels: NDArray[np.int32]
+    n_clusters: int
+    n_outliers: int
+    knn: KnnResult
+    components: NDArray[np.int32]
+    big_brother: BigBrotherResult
+    peak_score: NDArray[np.float32]
+    density_radius: NDArray[np.float32]
 
 
 def build_CCgraph(
@@ -545,6 +563,8 @@ class CPFcluster:
         plot_umap=False,
         plot_pca=False,
         plot_tsne=False,
+        knn_backend: str = "kd",
+        density_method: str = "rk",
     ):
         self.min_samples = min_samples
         self.rho = rho if rho is not None else [0.4]
@@ -562,7 +582,10 @@ class CPFcluster:
         self.plot_umap = plot_umap
         self.plot_pca = plot_pca
         self.plot_tsne = plot_tsne
+        self.knn_backend = self._normalize_knn_backend(knn_backend)
+        self.density_method = self._normalize_density_method(density_method)
         self.clusterings = {}
+        self._fast_fit: Optional[_FastFit] = None
 
     def fit(self, X, k_values=None):
         """
@@ -647,6 +670,142 @@ class CPFcluster:
                 ] = labels
 
         return self.clusterings
+
+    def fit_single(self, X: NDArray[np.float32]) -> "CPFcluster":
+        """Fit a single-parameter CPF model (fastCPF parity).
+
+        This runs CPF once with the first rho/alpha values and stores
+        fastCPF-style attributes (labels_, knn_*, components_, etc.).
+        """
+        X = np.asarray(X, dtype=np.float32)
+        if X.ndim != 2:
+            raise ValueError("X must be a 2D array.")
+        n, d = X.shape
+        if n == 0:
+            raise ValueError("X must contain at least 1 sample.")
+
+        k = min(self.min_samples, n)
+        backend = self._normalize_knn_backend(self.knn_backend)
+        if backend == "faiss":
+            knn = knn_search_faiss(X, k)
+        else:
+            knn = knn_search(X, k, backend=backend)
+
+        density_radius = compute_density_radius(knn, self.density_method)
+        adj = make_mutual(build_knn_adjacency(knn))
+        components = extract_components(adj)
+        components = filter_by_edge_count(adj, components, self.cutoff)
+
+        bb = compute_big_brother(X, density_radius, components, k)
+        peak_score = compute_peak_score(bb.parent_dist, density_radius)
+
+        rho = self._first_param(self.rho)
+        alpha = self._first_param(self.alpha)
+        labels = get_y(
+            adj,
+            components,
+            density_radius,
+            bb.parent_dist,
+            bb.parent,
+            rho,
+            alpha,
+            d,
+        ).astype(np.int32)
+
+        n_outliers = int(np.sum(labels == OUTLIER))
+        n_clusters = len(set(labels.tolist()) - {OUTLIER})
+
+        self._fast_fit = _FastFit(
+            labels=labels,
+            n_clusters=n_clusters,
+            n_outliers=n_outliers,
+            knn=knn,
+            components=components.astype(np.int32),
+            big_brother=bb,
+            peak_score=peak_score.astype(np.float32),
+            density_radius=density_radius.astype(np.float32),
+        )
+        return self
+
+    @staticmethod
+    def _normalize_knn_backend(backend: str) -> str:
+        key = backend.lower()
+        if key in {"kd", "kdtree"}:
+            return "kd"
+        if key in {"brute", "bruteforce"}:
+            return "brute"
+        if key in {"faiss"}:
+            return "faiss"
+        raise ValueError(
+            f"Unsupported knn_backend: '{backend}'. Use 'kd', 'brute', or 'faiss'."
+        )
+
+    @staticmethod
+    def _normalize_density_method(method: str) -> str:
+        key = method.lower()
+        if key in {"rk", "r_k", "knn_radius"}:
+            return "rk"
+        if key == "median":
+            return "median"
+        if key in {"mean", "avg", "average"}:
+            return "mean"
+        raise ValueError(
+            f"Unsupported density_method: '{method}'. Use 'rk', 'median', or 'mean'."
+        )
+
+    @staticmethod
+    def _first_param(values) -> float:
+        if isinstance(values, (list, tuple, np.ndarray)):
+            if len(values) == 0:
+                raise ValueError("Parameter list must not be empty.")
+            return float(values[0])
+        return float(values)
+
+    def _require_fast_fit(self) -> "_FastFit":
+        if self._fast_fit is None:
+            raise RuntimeError("Model has not been fitted. Call fit_single() first.")
+        return self._fast_fit
+
+    # fastCPF-style attributes (properties)
+    @property
+    def labels_(self) -> NDArray[np.int32]:
+        return self._require_fast_fit().labels
+
+    @property
+    def n_clusters_(self) -> int:
+        return self._require_fast_fit().n_clusters
+
+    @property
+    def n_outliers_(self) -> int:
+        return self._require_fast_fit().n_outliers
+
+    @property
+    def knn_indices_(self) -> NDArray[np.int32]:
+        return self._require_fast_fit().knn.indices
+
+    @property
+    def knn_distances_(self) -> NDArray[np.float32]:
+        return self._require_fast_fit().knn.distances
+
+    @property
+    def knn_radius_(self) -> NDArray[np.float32]:
+        return self._require_fast_fit().knn.radius
+
+    @property
+    def components_(self) -> NDArray[np.int32]:
+        return self._require_fast_fit().components
+
+    @property
+    def big_brother_(self) -> NDArray[np.int32]:
+        return self._require_fast_fit().big_brother.parent
+
+    @property
+    def big_brother_dist_(self) -> NDArray[np.float32]:
+        return self._require_fast_fit().big_brother.parent_dist
+
+    @property
+    def peak_score_(self) -> NDArray[np.float32]:
+        return self._require_fast_fit().peak_score
 
     def calculate_centroids_and_densities(self, X, labels):
         """
